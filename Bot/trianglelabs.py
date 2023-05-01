@@ -250,8 +250,6 @@ class Discord:
               (Client.user.name, Client.user.ID))
 
     async def parse_message(message):
-        # This Function Strips Discord Pings from messages
-        # Prevents bot from mass pinging
         subs = {"You:": "", "Friend:": "", vars.Client.user.name + ":": ""}
         new_message = message
         for i in subs:
