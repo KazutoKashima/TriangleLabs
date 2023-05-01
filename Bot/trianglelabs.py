@@ -639,7 +639,7 @@ class AI:
 
     class Image_Recognition:
         # Is this complete????
-        # TODO
+        # 
         async def URL(url):
             async with arequests.Session() as session:
                 session.auth = config_tokens["imagga_auth"]
