@@ -16,7 +16,9 @@ from discord.ext import commands
 from discord import ui, app_commands, Spotify
 from trianglelabs import Discord, Moderation, AI, langdetect, langcodes, translators, asyncify
 
+# Global Variables
 version = "0.2.1"
+base_dir = f"{trianglelabs.config['DATABASE']}"
 
 # Create Client
 Client = Discord.create_client()
@@ -26,44 +28,27 @@ async def on_ready():
     try:
         del trianglelabs.config["token"]
     except: ...
+    
     await Discord.parse_presence(
         Client=Client,
         activitytype=trianglelabs.config["activity"],
         status=trianglelabs.config["status"],
         stream_link=trianglelabs.config["stream_link"]
     )
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/user_info"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/user_info")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/user_info/likes"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/user_info/likes")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/user_info/dislikes"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/user_info/dislikes")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/user_info/language"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/user_info/language")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/user_info/roleplay"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/user_info/roleplay")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/user_info/limits"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/user_info/limits")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/images"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/images")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/feedback"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/feedback")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/story_mode"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/story_mode")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine")
-    if not os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/message_context"):
-        os.system("mkdir %s" % f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/message_context")
+    
+    folders = ['user_info/likes', 'user_info/dislikes', 'user_info/language', 'user_info/roleplay', 'user_info/limits', 'clients', 'images', 'feedback']
+    clientFolders = ['users', 'channels', 'story_mode', 'engine', 'message_context']
+    if not os.path.exists(base_dir):
+        os.system("command mkdir %s" % base_dir)
+    for folder in folders:
+        if not os.path.exists(f"{base_dir}/{folder}"):
+            os.system("mkdir %s" % f"{base_dir}/{folder}")
+    if not os.path.exists(f"{base_dir}/clients/{Client.user.id}"):
+        os.system("mkdir %s" % f"{base_dir}/clients/{Client.user.id}")
+    for folder in clientFolders:
+        if not os.path.exists(f"{base_dir}/clients/{Client.user.id}/{folder}"):
+            os.system("mkdir %s" % f"{base_dir}/clients/{Client.user.id}/{folder}")
+
     await Client.tree.sync()
 
 @Client.event
@@ -72,7 +57,7 @@ async def on_message(message):
         if Discord.is_command(message):
             await Client.process_commands(message)
         else:
-            if Discord.is_dm_channel(message) or os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{message.channel.id}"):
+            if Discord.is_dm_channel(message) or os.path.exists(f"{base_dir}/clients/{Client.user.id}/channels/{message.channel.id}"):
                 # Fetch CTX for typing status and read channel history
                 try:
                     try:
@@ -91,8 +76,8 @@ async def on_message(message):
                         if (message.content[:2] == "<@" and str(Client.user.id) not in message.content) or (Client.user.name not in message.content) or (ctx.guild.get_member(vars.Client.user.id).display_name not in message.content):
                             if not trianglelabs.Limits.is_limited(message):
                                 async with ctx.typing():
-                                    if os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{ctx.channel.id}"):
-                                        with open(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{ctx.channel.id}") as conf:engine = int(conf.read().replace("\n", "")); conf.close()
+                                    if os.path.exists(f"{base_dir}/clients/{Client.user.id}/engine/{ctx.channel.id}"):
+                                        with open(f"{base_dir}/clients/{Client.user.id}/engine/{ctx.channel.id}") as conf:engine = int(conf.read().replace("\n", "")); conf.close()
                                     if engine not in [3, 4]:
                                         data = await AI.Response.wrap_content(message, ctx, user_activity=user_activites)
                                     elif engine == 4:
@@ -108,11 +93,11 @@ async def on_message(message):
                                         is_not_safe = await asyncify(Discord.is_safe_message, __data)
                                     message_is_unsafe = await asyncify(Discord.is_safe_message, message.content)
                                     if not (is_not_safe and message_is_unsafe):
-                                        file = f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users/{message.author.id}"
+                                        file = f"{base_dir}/clients/{Client.user.id}/users/{message.author.id}"
                                         os.system(f"echo {message.id} >> {file}")
                                         __msg_content = await AI.Response.prompt(data, 1, ctx)
                                         try:
-                                            language_store = trianglelabs.config["DATABASE"] + "/user_info/language/" + str(message.author.id)
+                                            language_store = base_dir + "/user_info/language/" + str(message.author.id)
                                             if os.path.exists(language_store):
                                                 with open(language_store) as language:
                                                     __original_language = language.read().replace("\n", "")
@@ -188,7 +173,7 @@ async def ping(ctx):
 
 @Client.command(name="wack")
 async def wack(ctx):
-    os.system(f"rm %s" % (f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users/{ctx.author.id}"))
+    os.system(f"rm %s" % (f"{base_dir}/clients/{Client.user.id}/users/{ctx.author.id}"))
     await Discord.reply(ctx, "oww my head hurts...")
 
 @Client.command(name="sync")
@@ -199,7 +184,7 @@ async def sync(ctx: commands.context.Context):
 @Client.command(name="activate")
 async def activate(ctx):
     if ctx.author.guild_permissions.administrator:
-        os.system(f"touch {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{ctx.channel.id}")
+        os.system(f"touch {base_dir}/clients/{Client.user.id}/channels/{ctx.channel.id}")
         message = await Discord.parse_message(f"{Client.user.name} enabled - use /disable to disable bot")
         await ctx.send(message)
     else:
@@ -209,7 +194,7 @@ async def activate(ctx):
 @commands.has_permissions(administrator=True)
 async def activate(ctx):
     if ctx.author.guild_permissions.administrator:
-        os.system(f"rm {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{ctx.channel.id}")
+        os.system(f"rm {base_dir}/clients/{Client.user.id}/channels/{ctx.channel.id}")
         message = await Discord.parse_message(f"{Client.user.name} disabled")
         await ctx.send(message)
     else:
@@ -225,7 +210,7 @@ async def ping_slash(interaction: discord.Interaction):
 
 @Client.tree.command(name="wack", description="Clear converysation history with the bot.")
 async def ping_slash(interaction: discord.Interaction):
-    os.system(f"rm %s" % (f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users/{interaction.user.id}"))
+    os.system(f"rm %s" % (f"{base_dir}/clients/{Client.user.id}/users/{interaction.user.id}"))
     await interaction.response.send_message("oww my head hurts...")
 
 @Client.tree.command(name="support", description="Get support for the bot.")
@@ -235,7 +220,7 @@ async def ping_slash(interaction: discord.Interaction):
 @Client.tree.command(name="enable", description="Enable the bot in your current channel")
 async def enable_slash(interaction: discord.Interaction):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
-        os.system(f"touch {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{interaction.channel_id}")
+        os.system(f"touch {base_dir}/clients/{Client.user.id}/channels/{interaction.channel_id}")
         message = await Discord.parse_message(f"{Client.user.name} enabled")
         await interaction.response.send_message(message)
     else:
@@ -251,13 +236,13 @@ async def regen(ctx):
     message = ctx.message
     await ctx.message.delete()
     try:
-        with open(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users/{ctx.author.id}") as file:
+        with open(f"{base_dir}/clients/{Client.user.id}/users/{ctx.author.id}") as file:
             lines = file.read().strip().split("\n")
             last_message_id = lines[-1]
             lines.pop(len(lines) - 1)
             lines = '\n'.join(lines) + "\n"
             file.close()
-        with open(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users/{ctx.author.id}", "w") as file:
+        with open(f"{base_dir}/clients/{Client.user.id}/users/{ctx.author.id}", "w") as file:
             file.write(lines)
             file.close()
         message = await channel.fetch_message(last_message_id)
@@ -266,7 +251,7 @@ async def regen(ctx):
     except Exception as error: print(error)
     if 1==1:
         message = replyto
-        if Discord.is_dm_channel(message) or os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{message.channel.id}"):
+        if Discord.is_dm_channel(message) or os.path.exists(f"{base_dir}/clients/{Client.user.id}/channels/{message.channel.id}"):
                 # Fetch CTX for typing status and read channel history
                 try:
                     try:
@@ -285,8 +270,8 @@ async def regen(ctx):
                         if (message.content[:2] == "<@" and not (str(Client.user.id) in message.content)) or not (Client.user.name in message.content) or not (ctx.guild.get_member(Client.user.id).display_name in message.content):
                             if not trianglelabs.Limits.is_limited(message):
                                 async with ctx.typing():
-                                    if os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{ctx.channel.id}"):
-                                        with open(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{ctx.channel.id}") as conf:engine = int(conf.read().replace("\n", "")); conf.close()
+                                    if os.path.exists(f"{base_dir}/clients/{Client.user.id}/engine/{ctx.channel.id}"):
+                                        with open(f"{base_dir}/clients/{Client.user.id}/engine/{ctx.channel.id}") as conf:engine = int(conf.read().replace("\n", "")); conf.close()
                                     if engine not in [3, 4]:
                                         data = await AI.Response.wrap_content(message, ctx, user_activity=user_activites, mode=message.id)
                                     elif engine == 4:
@@ -302,11 +287,11 @@ async def regen(ctx):
                                         is_not_safe = await asyncify(Discord.is_safe_message, __data)
                                     message_is_unsafe = await asyncify(Discord.is_safe_message, message.content)
                                     if not (is_not_safe and message_is_unsafe):
-                                        file = f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/users/{message.author.id}"
+                                        file = f"{base_dir}/clients/{Client.user.id}/users/{message.author.id}"
                                         os.system(f"echo {message.id} >> {file}")
                                         __msg_content = await AI.Response.prompt(data, 1, ctx)
                                         try:
-                                            language_store = trianglelabs.config["DATABASE"] + "/user_info/language/" + str(message.author.id)
+                                            language_store = base_dir + "/user_info/language/" + str(message.author.id)
                                             if os.path.exists(language_store):
                                                 with open(language_store) as language:
                                                     __original_language = language.read().replace("\n", "")
@@ -364,7 +349,7 @@ async def generate_image_context_menu(interaction: discord.Interaction, message:
 @Client.tree.context_menu(name="Enable AI")
 async def disable_slash(interaction: discord.Interaction, message: discord.Message):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
-        os.system(f"touch {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{interaction.channel_id}")
+        os.system(f"touch {base_dir}/clients/{Client.user.id}/channels/{interaction.channel_id}")
         # Discord.parse_message is a custom function that removes all pings from the message, mainly for raid & abuse prevention
         message = await Discord.parse_message(f"{Client.user.name} enabled - use /disable to disable bot")
         await interaction.response.send_message(message, ephemeral=True)
@@ -374,7 +359,7 @@ async def disable_slash(interaction: discord.Interaction, message: discord.Messa
 @Client.tree.context_menu(name="Disable AI")
 async def disable_slash(interaction: discord.Interaction, message: discord.Message):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
-        os.system(f"rm {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{interaction.channel_id}")
+        os.system(f"rm {base_dir}/clients/{Client.user.id}/channels/{interaction.channel_id}")
         # Discord.parse_message is a custom function that removes all pings from the message, mainly for raid & abuse prevention
         message = await Discord.parse_message(f"{Client.user.name} disabled")
         await interaction.response.send_message(message, ephemeral=True)
@@ -384,7 +369,7 @@ async def disable_slash(interaction: discord.Interaction, message: discord.Messa
 @Client.tree.command(name="disable", description="Disables the bot in your current channel")
 async def disable_slash(interaction: discord.Interaction):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
-        os.system(f"rm {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/channels/{interaction.channel_id}")
+        os.system(f"rm {base_dir}/clients/{Client.user.id}/channels/{interaction.channel_id}")
         # Discord.parse_message is a custom function that removes all pings from the message, mainly for raid & abuse prevention
         message = await Discord.parse_message(f"{Client.user.name} disabled")
         await interaction.response.send_message(message)
@@ -444,7 +429,7 @@ class Feedback_Form(ui.Modal, title="TriangleLabs Feedback Form"):
     async def on_submit(self, interaction: discord.Interaction):
         if Moderation.Not_Banned_User(interaction.user.id):
             await interaction.response.send_message(f'Thanks for your response, {interaction.user.name}!', ephemeral=True)
-            with open(f"{trianglelabs.config['DATABASE']}/feedback/feedback.txt", "a") as file:
+            with open(f"{base_dir}/feedback/feedback.txt", "a") as file:
                 file.write(f"{interaction.user.id} - {interaction.user.name}\n" + self.feedback.value + "\n\n\n\n\n")
                 file.close()
         else:
@@ -462,7 +447,7 @@ async def begin_story_mode(interaction:discord.Interaction):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
         message = await Discord.parse_message(f"Update: we’ve turned on Story Mode for {Client.user.name}")
         await interaction.response.send_message(message)
-        os.system(f"touch {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/story_mode/{interaction.channel_id}")
+        os.system(f"touch {base_dir}/clients/{Client.user.id}/story_mode/{interaction.channel_id}")
     else:
         await interaction.response.send_message("Missing Permissions.", ephemeral=True)
 
@@ -471,7 +456,7 @@ async def end_story_mode(interaction:discord.Interaction):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
         message = await Discord.parse_message(f"Update: we’ve turned off Story Mode for {Client.user.name}")
         await interaction.response.send_message(message)
-        os.system(f"rm {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/story_mode/{interaction.channel_id}")
+        os.system(f"rm {base_dir}/clients/{Client.user.id}/story_mode/{interaction.channel_id}")
     else:
         await interaction.response.send_message("Missing Permissions.", ephemeral=True)
 
@@ -479,9 +464,9 @@ async def end_story_mode(interaction:discord.Interaction):
 async def setengine_slash(interaction:discord.Interaction):
     if Discord.is_dm_channel(interaction) or interaction.user.guild_permissions.administrator:
         default_option = 0
-        if os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}"):
+        if os.path.exists(f"{base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}"):
             default_option = 0
-            with open(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}") as f:
+            with open(f"{base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}") as f:
                 default_option = int(f.read().replace("\n", ""))
                 f.close()
         select = discord.ui.Select(
@@ -499,13 +484,13 @@ async def setengine_slash(interaction:discord.Interaction):
             await interaction.response.send_message(f"Processing...", ephemeral=True)
             selection = {"Text Davinci 003 (default)":1, "Text Davinci 002": 2, "GPT 3.5 Turbo": 3, "GPT 4":4}[list(interaction.data.values())[0][0]]
             if selection == 1:
-                if os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}"):
-                    os.system(f"rm {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}")
+                if os.path.exists(f"{base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}"):
+                    os.system(f"rm {base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}")
                 await interaction.edit_original_response(content=f"Engine has been set to {list(interaction.data.values())[0][0]}.")
             else:
-                if os.path.exists(f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}"):
-                    os.system(f"rm {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}")
-                os.system(f"echo {selection} >> {trianglelabs.config['DATABASE']}/clients/{Client.user.id}/engine/{interaction.channel_id}")
+                if os.path.exists(f"{base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}"):
+                    os.system(f"rm {base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}")
+                os.system(f"echo {selection} >> {base_dir}/clients/{Client.user.id}/engine/{interaction.channel_id}")
                 await interaction.edit_original_response(content=f"Engine has been set to {list(interaction.data.values())[0][0]}.")
 
         select.callback = engine_select_callback
@@ -545,7 +530,7 @@ app_commands.Choice(name='Simplified Chinese (简体中文)', value='zh-Hans'),
 app_commands.Choice(name='Traditional Chinese (繁體中文)', value='zh-Hant'),
 ])
 async def set_language(interaction: discord.Interaction, choices: app_commands.Choice[str]):
-    language_store = trianglelabs.config["DATABASE"] + "/user_info/language/" + str(interaction.user.id)
+    language_store = base_dir + "/user_info/language/" + str(interaction.user.id)
     if os.path.exists(language_store):
         os.remove(language_store)
     with open(language_store, "w") as language:
@@ -559,7 +544,7 @@ app_commands.Choice(name='Enable', value='enable'),
 app_commands.Choice(name='Disable', value='disable')
 ])
 async def set_roleplay(interaction: discord.Interaction, choices: app_commands.Choice[str]):
-    roleplay_store = trianglelabs.config["DATABASE"] + "/user_info/roleplay/" + str(interaction.user.id)
+    roleplay_store = base_dir + "/user_info/roleplay/" + str(interaction.user.id)
     if choices.value == "enable":
         os.system(f"touch '%s'" % roleplay_store)
     else:
@@ -646,7 +631,7 @@ app_commands.Choice(name='All Members', value='all'),
 app_commands.Choice(name='Only User (Default)', value='user')
 ])
 async def message_context_slash(interaction: discord.Interaction, choices: app_commands.Choice[str]):
-    context_store = f"{trianglelabs.config['DATABASE']}/clients/{Client.user.id}/message_context/{interaction.channel_id}"
+    context_store = f"{base_dir}/clients/{Client.user.id}/message_context/{interaction.channel_id}"
     if choices.value == "all":
         os.system(f"touch {context_store}")
     elif choices.value == "user":
@@ -656,10 +641,10 @@ async def message_context_slash(interaction: discord.Interaction, choices: app_c
 try:
     Client.run(trianglelabs.config["token"].replace("\n", ""))
 except discord.errors.LoginFailure:
-    bots_store = trianglelabs.config["DATABASE"] + "/client_launchers/" + trianglelabs.config["__num"] + "/DONOTTOUCH"
+    bots_store = base_dir + "/client_launchers/" + trianglelabs.config["__num"] + "/DONOTTOUCH"
     os.system("touch %s" % bots_store)
     print("Failed to log in")
 except discord.errors.PrivilegedIntentsRequired:
-    bots_store = trianglelabs.config["DATABASE"] + "/client_launchers/" + trianglelabs.config["__num"] + "/DONOTTOUCH2"
+    bots_store = base_dir + "/client_launchers/" + trianglelabs.config["__num"] + "/DONOTTOUCH2"
     os.system("touch %s" % bots_store)
     print("Missing Intents")
