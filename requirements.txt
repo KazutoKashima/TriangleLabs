@@ -3,9 +3,6 @@ discord
 langdetect
 langcodes
 translators
-random
-time
 requests
 requests_async
 urllib3
-hashlib

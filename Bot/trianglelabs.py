@@ -606,13 +606,24 @@ class AI:
                                 stop=None),
                             timeout=15)
                         return response['choices'][0]['message']['content']
-                except openai.error.RateLimitError:
-                    if len(vars.tokens) == 1:
-                        return "Unfortunately, we are out of funding for the month :(\nPlease support us at https://www.patreon.com/trianglelabs :hearts:"
-                    else:
-                        vars.tokens.pop(0)
-                        openai.api_key = vars.tokens[0]
-                        return "Unfortunately, we are out of funding for the month :(\nPlease support us at https://www.patreon.com/trianglelabs :hearts:"
+                except openai.error.RateLimitError as e:
+                    if e._message == "You exceeded your current quota, please check your plan and billing details":
+                        if len(vars.tokens) == 1:
+                            return "Unfortunately, we are out of funding for the month :(\nPlease support us at https://www.patreon.com/trianglelabs :hearts:"
+                        else:
+                            vars.tokens.pop(0)
+                            openai.api_key = vars.tokens[0]
+                            return "Unfortunately, we are out of funding for the month :(\nPlease support us at https://www.patreon.com/trianglelabs :hearts:"
+                    elif e._message == "Rate limit reached for requests":
+                        """TODO
+                            Optionally we have two options here:
+                              1. We can wait for the rate limit to reset by adding a fallback delay, or
+                              2. We can switch to another API key and retry the request.
+                        """
+                        pass
+                    else: # Message: The engine is currently overloaded, please try again later
+                        return "Unfortunately, we can't handle your request right now...the engine is overloaded :(\nPlease try again later :hearts:"
+                        
                 except (openai.error.APIConnectionError, asyncio.TimeoutError):
                     try:
                         await response.aclose()
@@ -622,11 +633,14 @@ class AI:
                         res = await AI.Response.prompt(prompt, 0, ctx)
                         return res
                     else:
+                        # Are we just assuming OAI is down?
                         return "Unfortunately, we are out of funding for the month :(\nPlease support us at https://www.patreon.com/trianglelabs :hearts:"
             except:
+                # Again?
                 return "Unfortunately, we are out of funding for the month :(\nPlease support us at https://www.patreon.com/trianglelabs :hearts:"
 
     class Image_Recognition:
+        # Is this complete????
         # TODO
         async def URL(url):
             async with arequests.Session() as session:
