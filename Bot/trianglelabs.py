@@ -226,7 +226,13 @@ class Discord:
               (activitytype, status))
 
     def create_client(prefix=commands.when_mentioned_or(">>>>>")):
-        mentions = discord.AllowedMentions.none
+        mentions = discord.AllowedMentions(
+            everyone=False, 
+            users=False, 
+            roles=False,
+            # So Users can identify easier if the bot is talking to them
+            replied_user=True
+        )
         Client = commands.AutoShardedBot(
             command_prefix=prefix,
             help_command=None,

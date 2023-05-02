@@ -23,9 +23,6 @@ base_dir = f"{trianglelabs.config['DATABASE']}"
 # Create Client
 Client = Discord.create_client()
 
-# Set allowed mentions
-Client.allowed_mentions = discord.AllowedMentions(everyone=False, users=False, roles=False, replied_user=True)
-
 @Client.event
 async def on_ready():
     try:
